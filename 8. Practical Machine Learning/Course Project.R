@@ -12,6 +12,7 @@ str(training_dat)
 table(training_dat$classe)
 
 
+
 # Cleaning the data
 # There are further unnecessary columns that can be removed. The column  X  contains the row numbers. The column  user_name  contains the name of the user. Of course, these variables cannot predictors for the type of exercise.
 
@@ -101,6 +102,7 @@ plot(varImp(fit_rf) , top = 15 , main="Top 15 the most importance variebles")
 predictions <- predict(fit_rf, test_dat)
 
 # Conclusion
+test_dat <- cbind(test_dat , classe=predictions)
 test_dat [,c("user_name","raw_timestamp_part_1","raw_timestamp_part_2", "cvtd_timestamp", "num_window","classe")]
 table(test_dat$classe)
 
