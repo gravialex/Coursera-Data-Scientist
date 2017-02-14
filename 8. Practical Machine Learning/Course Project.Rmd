@@ -109,29 +109,6 @@ prediction_lda <- predict(fit_lda, testing)
 prediction_nb <- predict(fit_nb, testing)
 ```
 
-```{r include=FALSE}
-# set seed
-set.seed(12345)
-
-# Setting the parameters for model preprocessing 
-fitControl <- trainControl(method = "cv", 
-                           number = 5, 
-                           repeats = 3 , 
-                           preProcOptions="pca")
-
-# training models
-fit_rf <- train(classe ~ ., method = "rf", data = training , trControl = fitControl )
-fit_lda <- train(classe ~ ., method = "lda",  data = training)
-fit_boosted <- train(classe ~ ., method = "gbm",  data = training , trControl = fitControl)
-fit_nb <- train(classe ~ ., method = "nb",  data = training , trControl = fitControl)
-
-# test models 
-prediction_rf <- predict(fit_rf, testing)
-prediction_boosted <- predict(fit_boosted, testing)
-prediction_lda <- predict(fit_lda, testing)
-prediction_nb <- predict(fit_nb, testing)
-```
-
 Note training Random Forest took about 15 minutes on my computer (Intel Core I5 3,2 Gh, 8 Gb , Win 7).
 For better understanding our data we predict and visualise the most importance variebles from the test dataset using Random Forest model:
 
