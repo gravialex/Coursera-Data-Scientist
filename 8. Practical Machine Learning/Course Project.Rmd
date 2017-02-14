@@ -1,0 +1,171 @@
+---
+title: "Coursera Prediction Assignment Writeup"
+author: "Alexey Maranda"
+date: '14 February 2017 '
+---
+
+One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. The goal of your project is to predict the manner in which they did the exercise. 
+
+## Synopsis
+
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+### Libraries
+```{r, results="hide"}
+
+library(caret)
+library(corrplot)
+```
+## Data Preprocessing
+
+### Getting Data
+
+```{r}
+training_dat = read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv" , 
+                        na.strings = c("NA", ""))
+test_dat = read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", 
+                    na.strings = c("NA", ""))
+
+# Exploring Data Analysis
+dim(training_dat) ; dim(test_dat)
+table(training_dat$classe)
+
+```
+The training data set contains 19622 observations and 160 variables
+
+###Cleaning the data and dimension reduction
+
+In this step, we will clean the data and get rid of observations with missing values as well as some meaningless variables. There are further unnecessary columns that can be removed. The column  X  contains the row numbers. The column user_name  contains the name of the user. Of course, these variables cannot predictors for the type of exercise.
+Furthermore, the three columns containing time stamps ( raw_timestamp_part_1 ,  raw_timestamp_part_2 , and  cvtd_timestamp ) will not be used. 
+The factors  new_window  and  num_window  are not related to sensor data. They will be removed too.
+
+```{r , results="hide"}
+# Remove Near Zero Values columns
+training_subdat <- training_dat[ , names(training_dat)[!nearZeroVar(training_dat, saveMetrics=TRUE)$nzv]]
+
+# Remove columns with NA
+colsNAs <- colMeans(is.na(training_subdat))
+indx <- !colsNAs
+training_subdat <- training_subdat[indx]
+str(training_subdat)
+
+# remove columns which aren't predictors : x ( unique row ID ) , 
+# user_name , raw_timestamp_part_1 , raw_timestamp_part_2 , cvtd_timestamp, num_window
+training_subdat <- training_subdat[, -c(1:6)]
+dim(training_subdat)
+```
+As we can see our data now has only 53 columns for modeling.
+
+###Split data to testing and training sets
+
+Now we split the training set into two for cross validation purposes. Use the caret 
+to randomly subsample 75%  for training set and 25% to testing set.
+```{r , results="hide"}
+inTrain = createDataPartition(training_subdat$classe, p = 0.75)[[1]]
+training = training_subdat[inTrain, ]
+testing = training_subdat[-inTrain, ]
+dim(training) ; dim(testing)
+
+```
+
+Also we should remove those variable which has high correlation. A good set of features is when they are highly uncorrelated (orthogonal) each others. 
+```{r , results="hide"}
+# remove "classe" column to build correlation matrix
+descrCorr <- cor(training[, 1:52])
+
+# get correlation matrix whit the pair-wise absolute correlation cutoff more 90%
+highCorr <- findCorrelation(descrCorr, 0.90)
+
+# delete correlated columns from training and test sets
+training <- training[, -highCorr]
+testing <- testing[, -highCorr]
+```
+## Prediction modeling
+
+
+For choose better model we'll try to train "Random Forest","Boosted Tree","Linear Discriminant","Naive Bayes" models.
+And we will use 5-fold cross validation when applying the algorithms. 
+```{r eval = FALSE }
+# set seed
+set.seed(12345)
+
+# Setting the parameters for model preprocessing 
+fitControl <- trainControl(method = "cv", 
+                           number = 5, 
+                           repeats = 3 , 
+                           preProcOptions="pca")
+
+# training models
+fit_rf <- train(classe ~ ., method = "rf", data = training , trControl = fitControl )
+fit_lda <- train(classe ~ ., method = "lda",  data = training)
+fit_boosted <- train(classe ~ ., method = "gbm",  data = training , trControl = fitControl)
+fit_nb <- train(classe ~ ., method = "nb",  data = training , trControl = fitControl)
+
+# test models 
+prediction_rf <- predict(fit_rf, testing)
+prediction_boosted <- predict(fit_boosted, testing)
+prediction_lda <- predict(fit_lda, testing)
+prediction_nb <- predict(fit_nb, testing)
+```
+
+```{r include=FALSE}
+# set seed
+set.seed(12345)
+
+# Setting the parameters for model preprocessing 
+fitControl <- trainControl(method = "cv", 
+                           number = 5, 
+                           repeats = 3 , 
+                           preProcOptions="pca")
+
+# training models
+fit_rf <- train(classe ~ ., method = "rf", data = training , trControl = fitControl )
+fit_lda <- train(classe ~ ., method = "lda",  data = training)
+fit_boosted <- train(classe ~ ., method = "gbm",  data = training , trControl = fitControl)
+fit_nb <- train(classe ~ ., method = "nb",  data = training , trControl = fitControl)
+
+# test models 
+prediction_rf <- predict(fit_rf, testing)
+prediction_boosted <- predict(fit_boosted, testing)
+prediction_lda <- predict(fit_lda, testing)
+prediction_nb <- predict(fit_nb, testing)
+```
+
+Note training Random Forest took about 15 minutes on my computer (Intel Core I5 3,2 Gh, 8 Gb , Win 7).
+For better understanding our data we predict and visualise the most importance variebles from the test dataset using Random Forest model:
+
+```{r}
+plot(varImp(fit_rf) , top = 15 , main="Top 15 the most importance variebles")
+```
+
+To compare models each other we make table with Accuracy for each model:
+```{r}
+# Measuring Models Accuracy
+
+Accuracy <- c(confusionMatrix(prediction_rf, testing$classe)$overall[1],
+              confusionMatrix(prediction_boosted, testing$classe)$overall[1],
+              confusionMatrix(prediction_lda, testing$classe)$overall[1],
+              confusionMatrix(prediction_nb, testing$classe)$overall[1])
+ModelType <- c("Random Forest","Boosted Tree","Linear Discriminant","Naive Bayes")
+PerformanceTable <- data.frame(ModelType,Accuracy)
+print(PerformanceTable)
+
+# Out-of Sample Accuracy for Random Forest
+confusionMatrix(prediction_rf, testing$classe)
+```
+As we see Random Forest algorithm shows the best Accuracy more 99% , will use it for making prediction our unknown data.
+
+
+## Applying the selected Model to the Test Data
+```{r}
+
+predictions <- predict(fit_rf, test_dat)
+# show prediction results
+predictions
+test_dat <- cbind(test_dat , classe=predictions)
+test_dat [,c("user_name", "cvtd_timestamp", "num_window","classe")]
+
+# number of classes
+table(test_dat$classe)
+```
