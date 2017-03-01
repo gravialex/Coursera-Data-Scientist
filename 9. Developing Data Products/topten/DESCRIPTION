@@ -1,0 +1,10 @@
+Package: topten
+Type: Package
+Title: Building a Prediction Model from Top 10
+Version: 0.1.0
+Author: Alexey
+Maintainer: The package maintainer <yourself@somewhere.net>
+Description: Build functions for prediction models
+License: GPL-3
+Encoding: UTF-8
+LazyData: true

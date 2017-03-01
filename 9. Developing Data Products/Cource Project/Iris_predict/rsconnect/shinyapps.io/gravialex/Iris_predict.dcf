@@ -1,0 +1,10 @@
+name: Iris_predict
+title: Iris_predict
+account: gravialex
+server: shinyapps.io
+appId: 160318
+bundleId: 729218
+url: https://gravialex.shinyapps.io/Iris_predict/
+when: 1488365307.29358
+asMultiple: FALSE
+asStatic: FALSE
